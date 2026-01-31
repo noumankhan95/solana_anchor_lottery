@@ -10,14 +10,14 @@ pub struct InitializeLottery<'info> {
     pub signer: Signer<'info>,
     #[account(init,payer=signer,space=8+Lottery::INIT_SPACE,seeds=[b"lottery",signer.key().as_ref(),lottery_id.to_le_bytes().as_ref()],bump)]
     pub lottery_account: Account<'info, Lottery>,
-    pub prize_mint: InterfaceAccount<'info, Mint>,
+    pub prize_mint: Account<'info, Mint>,
     #[account(
         init,
         payer = signer,
         token::mint = prize_mint,
         token::authority = lottery_account
     )]
-    pub vault: InterfaceAccount<'info, TokenAccount>,
+    pub vault: Account<'info, Token>,
     pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
 }

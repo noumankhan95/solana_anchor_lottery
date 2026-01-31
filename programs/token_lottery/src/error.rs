@@ -4,4 +4,6 @@ use anchor_lang::prelude::*;
 pub enum Errors {
     #[msg("Lottery Is Closed")]
     LotteryClosed,
+    #[msg("Winner Not Chosen")]
+    WinnerNotChosen,
 }

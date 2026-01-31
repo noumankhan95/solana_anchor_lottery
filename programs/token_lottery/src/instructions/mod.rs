@@ -11,3 +11,6 @@ mod request_randomness;
 pub use request_randomness;
 mod consume_randomness;
 pub use consume_randomness;
+
+mod claim_winner;
+pub use claim_winner::*;

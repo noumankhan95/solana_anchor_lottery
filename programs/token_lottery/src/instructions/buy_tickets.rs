@@ -7,7 +7,7 @@ use anchor_spl::{
         create_master_edition_v3, create_metadata_accounts_v3, CreateMasterEditionV3,
         CreateMetadataAccountsV3,
     },
-    token::{self, Mint, TokenAccount},
+    token::{self, Mint, Token, TokenAccount, Transfer},
 };
 use mpl_token_metadata::types::DataV2;
 
@@ -15,13 +15,16 @@ use mpl_token_metadata::types::DataV2;
 pub struct BuyTickets<'info> {
     #[account(mut)]
     pub buyer: Signer<'info>,
-
     #[account(mut)]
+    pub buyer_ata: Account<'info, Token>,
+    #[account(mut,seeds=[b"lottery",lottery.authority.key().as_ref(),lottery.lottery_id.to_le_bytes().as_ref()],bump=lottery.bump)]
     pub lottery: Account<'info, Lottery>,
+    #[account(mut,constraint=vault.key()==lottery.vault)]
+    pub vault: Account<'info, Token>,
     #[account(init,payer=buyer,mint::decimals=0,mint::authority=lottery)]
     pub ticket_mint: Account<'info, Mint>,
     #[account(init,payer=buyer,associated_token::mint=ticket_mint,associated_token::authority=buyer)]
-    pub associated_token_mint: Account<'info, TokenAccount>,
+    pub associated_ticket_mint: Account<'info, TokenAccount>,
     #[account(mut)]
     pub metadata: UncheckedAccount<'info>,
     #[account(mut)]
@@ -32,8 +35,17 @@ pub struct BuyTickets<'info> {
     pub rent: Sysvar<'info, Rent>,
 }
 
-pub fn buy_tokens(ctx: Context<BuyTickets>) -> Result<()> {
+pub fn buy_tokens(ctx: Context<BuyTickets>, total_tickets: u64) -> Result<()> {
     let lottery = &ctx.accounts.lottery;
+    let total_amount = lottery.ticket_price.saturating_mul(total_tickets);
+
+    let transfer_acc = Transfer {
+        from: ctx.accounts.buyer_ata.to_account_info(),
+        to: ctx.accounts.vault.to_account_info(),
+        authority: ctx.accounts.signer.to_account_info(),
+    };
+    let transfer_cpi = CpiContext::new(ctx.accounts.token_program.to_account_info(), transfer_acc);
+    token::transfer(transfer_cpi, total_amount)?;
     require!(lottery.is_active, Errors::LotteryClosed);
     token::mint_to(
         CpiContext::new(
@@ -41,7 +53,7 @@ pub fn buy_tokens(ctx: Context<BuyTickets>) -> Result<()> {
             token::MintTo {
                 authority: lottery.to_account_info(),
                 mint: ctx.accounts.ticket_mint.to_account_info(),
-                to: ctx.accounts.associated_token_mint.to_account_info(),
+                to: ctx.accounts.associated_ticket_mint.to_account_info(),
             },
         ),
         amount,
