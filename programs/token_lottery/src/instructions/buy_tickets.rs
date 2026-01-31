@@ -1,3 +1,5 @@
+use crate::error::Errors;
+use crate::state::Lottery;
 use anchor_lang::prelude::*;
 use anchor_spl::{
     associated_token::AssociatedToken,
@@ -8,8 +10,6 @@ use anchor_spl::{
     token::{self, Mint, TokenAccount},
 };
 use mpl_token_metadata::types::DataV2;
-
-use crate::state::Lottery;
 
 #[derive(Accounts)]
 pub struct BuyTickets<'info> {
@@ -34,6 +34,7 @@ pub struct BuyTickets<'info> {
 
 pub fn buy_tokens(ctx: Context<BuyTickets>) -> Result<()> {
     let lottery = &ctx.accounts.lottery;
+    require!(lottery.is_active, Errors::LotteryClosed);
     token::mint_to(
         CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
