@@ -17,7 +17,7 @@ pub struct InitializeLottery<'info> {
         token::mint = prize_mint,
         token::authority = lottery_account
     )]
-    pub vault: Account<'info, Token>,
+    pub vault: Account<'info, TokenAccount>,
     pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
 }

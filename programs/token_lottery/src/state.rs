@@ -12,6 +12,7 @@ pub struct Lottery {
     pub total_tickets: u64,
     pub winner_mint: Option<Pubkey>,
     pub randomness: Option<[u8; 32]>,
+    pub vrf:Option<Pubkey>,
     pub bump: u8,
     #[max_len(1000)]
     pub tickets_mints: Vec<Pubkey>,

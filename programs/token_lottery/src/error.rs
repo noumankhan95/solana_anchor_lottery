@@ -6,4 +6,8 @@ pub enum Errors {
     LotteryClosed,
     #[msg("Winner Not Chosen")]
     WinnerNotChosen,
+    #[msg("Lottery Limit Exeeded")]
+    LimitExceeded,
+    #[msg("Ticket is Invalid")]
+    InvalidWinningTicket,
 }

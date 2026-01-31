@@ -10,8 +10,16 @@ pub struct ClaimWinner<'info> {
     pub winner: Signer<'info>,
     #[account(mut,seeds=[b"lottery",lottery.authority.key().as_ref(),lottery.lottery_id.to_le_bytes().as_ref()],bump=lottery.bump)]
     pub lottery: Account<'info, Lottery>,
+
+    #[account(
+        mut,
+    constraint = winner_ticket_ata.owner == winner.key(),
+    constraint = winner_ticket_ata.mint == winnings_mint.key(),
+    constraint = winner_ticket_ata.amount == 1
+)]
+    pub winner_ticket_ata: Account<'info, TokenAccount>,
     #[account(mut,constraint=vault.key()==lottery.vault)]
-    pub vault: Account<'info, Token>,
+    pub vault: Account<'info, TokenAccount>,
     #[account(mut,constraint=winnings_mint.key()==lottery.winner_mint.unwrap())]
     pub winnings_mint: Account<'info, Mint>,
 
@@ -23,15 +31,28 @@ pub struct ClaimWinner<'info> {
 }
 
 pub fn claim_winner(ctx: Context<ClaimWinner>) -> Result<()> {
-    let lottery_acc = &ctx.accounts.lottery;
+    let lottery_acc = &mut ctx.accounts.lottery;
+    require!(lottery_acc.is_active, Errors::LotteryClosed);
     require!(lottery_acc.winner_mint.is_some(), Errors::WinnerNotChosen);
+    require!(
+    ctx.accounts.winner_ticket_ata.mint == lottery_acc.winner_mint.unwrap(),
+    Errors::InvalidWinningTicket
+);
     let transfer_acc = Transfer {
         authority: ctx.accounts.lottery.to_account_info(),
-        from: ctx.accounts.lottery_ata.to_account_info(),
+        from: ctx.accounts.vault.to_account_info(),
         to: ctx.accounts.winner_ata.to_account_info(),
     };
-    let transfer_ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), transfer_acc);
-    token::transfer(transfer_ctx, amount);
+    let seeds = &[
+        b"lottery",
+        lottery_acc.authority.as_ref(),
+        &lottery_acc.lottery_id.to_le_bytes(),
+        &[lottery_acc.bump],
+    ];
+    let signer_seeds = &[&seeds[..]];
+    let transfer_ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), transfer_acc)
+        .with_signer(signer_seeds);
+    token::transfer(transfer_ctx, ctx.accounts.vault.amount)?;
     lottery_acc.is_active = false;
     Ok(())
 }
